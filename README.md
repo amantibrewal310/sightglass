@@ -21,6 +21,24 @@ Every column lands in the same cell.
 
 Needs `bash` and `jq`. Nothing else: no Node, no plugin, one subprocess per refresh.
 
+### Let Claude Code do it
+
+Paste this into any Claude Code session:
+
+```text
+Install the Sightglass status line for Claude Code.
+
+1. Download https://raw.githubusercontent.com/amantibrewal310/sightglass/main/sightglass.sh
+   to ~/.claude/sightglass.sh and make it executable.
+2. Read ~/.claude/settings.json. If it already has a "statusLine" key, show me what it is
+   and ask before replacing it. Otherwise add this key, leaving every other key untouched:
+   {"statusLine": {"type": "command", "command": "bash ~/.claude/sightglass.sh", "padding": 0}}
+3. Confirm the file is still valid JSON, check that jq is on my PATH, and tell me plainly
+   if it is not. It takes effect in my next session.
+```
+
+### Or by hand
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/amantibrewal310/sightglass/main/sightglass.sh \
   -o ~/.claude/sightglass.sh
