@@ -90,6 +90,8 @@ Set in the environment, or edit the defaults at the top of the script.
 | `DIR_W` | `20` | Columns for the directory |
 | `BAR_CELLS` | `10` | Bar length |
 | `BAR_FILL` / `BAR_EMPTY` | `▰` `▱` | Bar glyphs — keep any replacement East-Asian-width Neutral |
+| `UPDATE_CHECK` | `notify` | `off`, `notify`, or `auto` — see Updating |
+| `UPDATE_INTERVAL` | `86400` | Seconds between checks |
 | `SHOW_LIMITS` | `1` | `0` drops the rate-limit segments |
 | `SHOW_CACHE` | `1` | `0` drops the cache segment |
 | `GAP_ABOVE` / `GAP_BELOW` | `0` `1` | Blank lines around the line. `padding` in settings.json is horizontal only |
@@ -98,14 +100,20 @@ The line is 129 columns. `MODEL_W=10 DIR_W=14` brings it to ~119.
 
 ## Updating
 
-Re-run the installer; it overwrites in place.
+Once a day it checks in the background and appends `update 1.4.0` to the end of the line
+when a newer version exists. Nothing else moves — the marker goes last.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/amantibrewal310/sightglass/main/install.sh | bash
-bash ~/.claude/sightglass.sh --version
 ```
 
-For the plugin, `/plugin update sightglass` then `/sightglass:install` — your status line
+To have it update itself instead, set `UPDATE_CHECK=auto` near the top of
+`~/.claude/sightglass.sh`. That is not the default on purpose: `auto` means this repo can
+put code on your machine that runs on every turn of every session. If you would not grant
+a stranger that, leave it on `notify` — one request a day, changes nothing — or set `off`
+and never touch the network.
+
+For the plugin, `/plugin update sightglass` then `/sightglass:install`; your status line
 runs the copy in `~/.claude`, not the plugin's.
 
 ## Uninstall
@@ -116,8 +124,8 @@ curl -fsSL https://raw.githubusercontent.com/amantibrewal310/sightglass/main/ins
 
 ## Notes
 
-Why every glyph is one cell wide, why the padding happens inside `jq`, and the rest of
-the reasoning: **https://claude.ai/artifact/GAiCaBcVFyorjgBvebz3fi**
+Why every glyph is one cell wide, why the padding happens inside `jq`, and what the
+Claude Code status-line payload actually gives you: [NOTES.md](NOTES.md).
 
 Built against Claude Code 2.1.272. Runs on the bash 3.2 that ships with macOS.
 

@@ -8,7 +8,7 @@
 # field holding a multi-byte glyph would be mis-padded. jq's `length` counts
 # codepoints, which is what actually lines the columns up.
 #
-SIGHTGLASS_VERSION=1.2.0
+SIGHTGLASS_VERSION=1.3.0
 if [ "${1:-}" = "--version" ]; then echo "sightglass $SIGHTGLASS_VERSION"; exit 0; fi
 
 # Column widths - tune these two if the line is too wide for your terminal.
@@ -31,12 +31,66 @@ BAR_CELLS=${BAR_CELLS:-10}
 SHOW_LIMITS=${SHOW_LIMITS:-1}
 SHOW_CACHE=${SHOW_CACHE:-1}
 
+# Update checking. "notify" shows a marker when a newer version exists; "auto"
+# also replaces this file with it; "off" never touches the network.
+#
+# "auto" means this repo can put code on your machine that runs every turn.
+# That is why it is not the default - it is a supply-chain decision, and it
+# should be yours. "notify" costs one request a day and changes nothing.
+UPDATE_CHECK=${UPDATE_CHECK:-notify}
+UPDATE_INTERVAL=${UPDATE_INTERVAL:-86400}
+UPDATE_URL=${UPDATE_URL:-https://raw.githubusercontent.com/amantibrewal310/sightglass/main/sightglass.sh}
+
 GAP_ABOVE=${GAP_ABOVE:-0}
 GAP_BELOW=${GAP_BELOW:-1}
 
+SELF=$0
+STATE=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
+STAMP=$STATE/.sightglass-checked
+LATEST=$STATE/.sightglass-latest
+
+# a > b, comparing dotted numeric versions; prints "y" or nothing
+newer() {
+  awk -v a="$1" -v b="$2" 'BEGIN {
+    na = split(a, x, "."); nb = split(b, y, ".")
+    n = na > nb ? na : nb
+    for (i = 1; i <= n; i++) {
+      if (x[i] + 0 > y[i] + 0) { print "y"; exit }
+      if (x[i] + 0 < y[i] + 0) { exit }
+    }
+  }'
+}
+
+# Runs detached so the status line never waits on the network.
+check_for_update() {
+  tmp=$(mktemp "$SELF.XXXXXX") || return 0
+  if ! curl -fsSL --max-time 10 "$UPDATE_URL" -o "$tmp" 2>/dev/null; then rm -f "$tmp"; return 0; fi
+  head -1 "$tmp" | grep -q '^#!/usr/bin/env bash' || { rm -f "$tmp"; return 0; }
+  v=$(sed -n 's/^SIGHTGLASS_VERSION=//p' "$tmp" | head -1)
+  case $v in ''|*[!0-9.]*) rm -f "$tmp"; return 0 ;; esac
+  printf '%s' "$v" > "$LATEST" 2>/dev/null || true
+  if [ "$UPDATE_CHECK" = auto ] && [ "$(newer "$v" "$SIGHTGLASS_VERSION")" = y ] && bash -n "$tmp" 2>/dev/null; then
+    chmod +x "$tmp"
+    mv "$tmp" "$SELF"            # rename, not truncate: a running copy keeps its inode
+    return 0
+  fi
+  rm -f "$tmp"
+}
+
+upd=""
+if [ "$UPDATE_CHECK" != off ] && [ -d "$STATE" ]; then
+  [ -f "$LATEST" ] && upd=$(cat "$LATEST" 2>/dev/null)
+  if [ ! -f "$STAMP" ] || [ -n "$(find "$STAMP" -mmin +$((UPDATE_INTERVAL / 60)) 2>/dev/null)" ]; then
+    : > "$STAMP" 2>/dev/null || true   # stamp first, so every turn does not spawn a check
+    ( check_for_update >/dev/null 2>&1 & ) >/dev/null 2>&1
+  fi
+  [ -n "$upd" ] && [ "$(newer "$upd" "$SIGHTGLASS_VERSION")" = y ] || upd=""
+fi
+
 out=$(jq -j --argjson mw "$MODEL_W" --argjson dw "$DIR_W" \
           --arg fill "$BAR_FILL" --arg empty "$BAR_EMPTY" --argjson cells "$BAR_CELLS" \
-          --argjson lim "$SHOW_LIMITS" --argjson cache "$SHOW_CACHE" '
+          --argjson lim "$SHOW_LIMITS" --argjson cache "$SHOW_CACHE" \
+          --arg upd "$upd" '
   # ---- padding / truncation helpers (codepoint-based) ----
   def spaces($n): if $n > 0 then " " * $n else "" end;
   def rpad($w): . + spaces($w - length);
@@ -133,6 +187,7 @@ out=$(jq -j --argjson mw "$MODEL_W" --argjson dw "$DIR_W" \
           | (if .prompt_cache.warm then cyn else dim end) + (($h | tostring) + "%" | lpad(4)) + rst
         end)
      end)
+  + (if $upd == "" then "" else sep + yel + "update " + $upd + rst end)
 ' 2>/dev/null) || out=""
 
 blanks() { i=0; while [ "$i" -lt "${1:-0}" ]; do printf '\n'; i=$((i + 1)); done; }

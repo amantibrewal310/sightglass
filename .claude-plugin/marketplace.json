@@ -3,7 +3,7 @@
   "owner": { "name": "amantibrewal310" },
   "metadata": {
     "description": "An always-on status line for Claude Code.",
-    "version": "1.2.0"
+    "version": "1.3.0"
   },
   "plugins": [
     {
