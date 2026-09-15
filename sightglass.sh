@@ -8,7 +8,7 @@
 # field holding a multi-byte glyph would be mis-padded. jq's `length` counts
 # codepoints, which is what actually lines the columns up.
 #
-SIGHTGLASS_VERSION=1.1.0
+SIGHTGLASS_VERSION=1.2.0
 if [ "${1:-}" = "--version" ]; then echo "sightglass $SIGHTGLASS_VERSION"; exit 0; fi
 
 # Column widths - tune these two if the line is too wide for your terminal.

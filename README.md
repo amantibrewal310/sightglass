@@ -17,18 +17,20 @@ Needs `bash` and `jq`. No Node, no plugin, one subprocess per refresh.
 
 ## Install
 
-Paste this into any Claude Code session:
-
-```text
-Install the Sightglass status line: download
-https://raw.githubusercontent.com/amantibrewal310/sightglass/main/sightglass.sh
-to ~/.claude/sightglass.sh, make it executable, and add this to ~/.claude/settings.json
-without touching any other key — show me the existing statusLine first if there is one:
-{"statusLine": {"type": "command", "command": "bash ~/.claude/sightglass.sh", "padding": 0}}
+```sh
+curl -fsSL https://raw.githubusercontent.com/amantibrewal310/sightglass/main/install.sh | bash
 ```
 
+That is the whole thing. It checks for `jq`, drops the script in `~/.claude`, and adds
+the `statusLine` key to `settings.json` without touching anything else — backing the file
+up first, and asking before replacing a status line you already have. Re-run it to update.
+
+It appears in your next session.
+
 <details>
-<summary>By hand</summary>
+<summary>Rather not pipe a URL into bash</summary>
+
+Read it first — it is 80 lines: [`install.sh`](install.sh). Or do it by hand:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/amantibrewal310/sightglass/main/sightglass.sh \
@@ -63,8 +65,6 @@ line by itself — `statusLine` is on Claude Code's denylist for plugin-contribu
 settings, along with every other setting that executes a command.
 </details>
 
-Takes effect in your next session.
-
 ## Reading it
 
 - `Opus 5 1M` — model, with `(1M context)` shortened
@@ -98,13 +98,21 @@ The line is 129 columns. `MODEL_W=10 DIR_W=14` brings it to ~119.
 
 ## Updating
 
+Re-run the installer; it overwrites in place.
+
 ```sh
+curl -fsSL https://raw.githubusercontent.com/amantibrewal310/sightglass/main/install.sh | bash
 bash ~/.claude/sightglass.sh --version
 ```
 
-Re-run the `curl` (or the install prompt) to update. For the plugin,
-`/plugin update sightglass` then `/sightglass:install` — your status line runs the copy
-in `~/.claude`, not the plugin's.
+For the plugin, `/plugin update sightglass` then `/sightglass:install` — your status line
+runs the copy in `~/.claude`, not the plugin's.
+
+## Uninstall
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/amantibrewal310/sightglass/main/install.sh | bash -s -- --uninstall
+```
 
 ## Notes
 
