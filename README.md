@@ -106,8 +106,14 @@ Set these in the environment, or edit the defaults at the top of the script.
 | `BAR_CELLS` | `10` | Bar length; `20` gives 5% resolution |
 | `BAR_FILL` | `▰` | Filled cell — keep it East-Asian-width Neutral |
 | `BAR_EMPTY` | `▱` | Empty cell |
+| `GAP_ABOVE` | `0` | Blank lines above the line |
+| `GAP_BELOW` | `1` | Blank lines below the line |
 
 The line is ~131 columns. `MODEL_W=12 DIR_W=18` brings it to ~123.
+
+`padding` in `settings.json` is horizontal only — it maps to `paddingX` in the renderer.
+For vertical breathing room use `GAP_BELOW`: the renderer splits the command output on
+newlines and draws a column, so a trailing blank line is the only way to get it.
 
 ## Why the columns hold
 

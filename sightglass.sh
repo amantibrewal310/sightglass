@@ -18,6 +18,12 @@ BAR_FILL=${BAR_FILL:-$'▰'}
 BAR_EMPTY=${BAR_EMPTY:-$'▱'}
 BAR_CELLS=${BAR_CELLS:-10}
 
+# Blank lines above/below the line. The renderer splits the command output on
+# newlines and draws a column, so this is the only way to get vertical space:
+# `padding` in settings.json maps to paddingX, which is horizontal only.
+GAP_ABOVE=${GAP_ABOVE:-0}
+GAP_BELOW=${GAP_BELOW:-1}
+
 out=$(jq -j --argjson mw "$MODEL_W" --argjson dw "$DIR_W" \
           --arg fill "$BAR_FILL" --arg empty "$BAR_EMPTY" --argjson cells "$BAR_CELLS" '
   # ---- padding / truncation helpers (codepoint-based) ----
@@ -65,13 +71,14 @@ out=$(jq -j --argjson mw "$MODEL_W" --argjson dw "$DIR_W" \
   def sep: " " + dim + "·" + rst + " ";
   def heat($p): if $p >= 80 then red elif $p >= 60 then yel else grn end;
 
-  # ---- one rate-limit segment, fixed width so columns never shift ----
+  # ---- one rate-limit segment; the countdown is emitted only when it exists,
+  #      never reserved, so a quiet window leaves no gap ----
   def limit($label; $raw; $reset):
     if $raw == null then ""
     else ([[$raw, 0] | max, 100] | min | round) as $p
       | (($p | tostring) + "%" | lpad(4)) as $ptxt
-      | (if $p >= 60 and $reset != null then "in " + countdown($reset) else "" end | rpad(9)) as $rtxt
-      | sep + heat($p) + $label + " " + $ptxt + rst + " " + dim + $rtxt + rst
+      | (if $p >= 60 and $reset != null then " " + dim + "in " + countdown($reset) + rst else "" end) as $rtxt
+      | sep + heat($p) + $label + " " + $ptxt + rst + $rtxt
     end;
 
   # ---- gather ----
@@ -103,4 +110,8 @@ out=$(jq -j --argjson mw "$MODEL_W" --argjson dw "$DIR_W" \
      end)
 ' 2>/dev/null) || out=""
 
+blanks() { i=0; while [ "$i" -lt "${1:-0}" ]; do printf '\n'; i=$((i + 1)); done; }
+
+blanks "$GAP_ABOVE"
 printf '%s' "$out"
+blanks "$GAP_BELOW"
