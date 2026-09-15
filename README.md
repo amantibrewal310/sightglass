@@ -91,9 +91,10 @@ carries.
 | `7d 30% in 1d14h` | `rate_limits.seven_day` | Same treatment. `spend` also appears on gateway accounts |
 | `cache 83%` | `prompt_cache.hit_ratio` | Cyan when warm, grey when cold; hidden until the first request |
 
-Every field is read defensively — a missing one hides its segment rather than breaking
-the line. On a raw API key there are no `rate_limits` in the payload at all, so those
-segments simply never render.
+`rate_limits` rides on API response headers and is not always in the payload — it can be
+missing at session start and after a window resets. The segments are therefore drawn
+either way, showing `-` until the numbers arrive, so nothing downstream moves. On a raw
+API key they never arrive at all; set `SHOW_LIMITS=0` to drop them.
 
 ## Tuning
 
@@ -106,6 +107,8 @@ Set these in the environment, or edit the defaults at the top of the script.
 | `BAR_CELLS` | `10` | Bar length; `20` gives 5% resolution |
 | `BAR_FILL` | `▰` | Filled cell — keep it East-Asian-width Neutral |
 | `BAR_EMPTY` | `▱` | Empty cell |
+| `SHOW_LIMITS` | `1` | Set `0` to drop the rate-limit segments |
+| `SHOW_CACHE` | `1` | Set `0` to drop the cache segment |
 | `GAP_ABOVE` | `0` | Blank lines above the line |
 | `GAP_BELOW` | `1` | Blank lines below the line |
 
@@ -152,6 +155,30 @@ boundary.
 One more, invisible: the ANSI colors are written as `` escapes and let `jq` produce
 the control bytes. A script with literal ESC bytes in it works fine locally and arrives
 colorless after any trip through a web page or a chat client, which silently strip them.
+
+## Updating
+
+Check what you are running:
+
+```sh
+bash ~/.claude/sightglass.sh --version
+```
+
+Installed by hand or by prompt — re-run the same `curl`. It overwrites in place and
+`settings.json` needs no change.
+
+Installed as a plugin:
+
+```
+/plugin marketplace update sightglass
+/plugin update sightglass
+/sightglass:install
+```
+
+The third step is not redundant. The plugin ships the script, but your status line runs
+the copy at `~/.claude/sightglass.sh`, so updating the plugin refreshes the bundled copy
+and not yours. Pointing `settings.json` straight at the plugin directory would remove the
+step, but that path carries the version number and would break on every update.
 
 ## Compatibility
 

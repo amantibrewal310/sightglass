@@ -2,7 +2,8 @@
 description: Wire the Sightglass status line into your Claude Code settings
 ---
 
-Install the Sightglass status line for this user.
+Install or update the Sightglass status line for this user. Re-running this is the
+supported way to pick up a new version.
 
 1. Read `${CLAUDE_PLUGIN_ROOT}/sightglass.sh`.
 2. Copy it to `~/.claude/sightglass.sh` and `chmod +x` it.

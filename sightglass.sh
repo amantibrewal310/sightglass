@@ -2,10 +2,15 @@
 # Always-on context / token / rate-limit / cache status line for Claude Code.
 # Reads the status line JSON payload on stdin.
 #
+# https://github.com/amantibrewal310/sightglass
+#
 # All rendering happens inside jq on purpose: bash printf pads by BYTES, so any
 # field holding a multi-byte glyph would be mis-padded. jq's `length` counts
 # codepoints, which is what actually lines the columns up.
 #
+SIGHTGLASS_VERSION=1.1.0
+if [ "${1:-}" = "--version" ]; then echo "sightglass $SIGHTGLASS_VERSION"; exit 0; fi
+
 # Column widths - tune these two if the line is too wide for your terminal.
 MODEL_W=12
 DIR_W=20
@@ -21,11 +26,17 @@ BAR_CELLS=${BAR_CELLS:-10}
 # Blank lines above/below the line. The renderer splits the command output on
 # newlines and draws a column, so this is the only way to get vertical space:
 # `padding` in settings.json maps to paddingX, which is horizontal only.
+# Set to 0 to drop these segments entirely. Rate limits are absent from the
+# payload on raw API keys, and `cache` on a session that has made no request.
+SHOW_LIMITS=${SHOW_LIMITS:-1}
+SHOW_CACHE=${SHOW_CACHE:-1}
+
 GAP_ABOVE=${GAP_ABOVE:-0}
 GAP_BELOW=${GAP_BELOW:-1}
 
 out=$(jq -j --argjson mw "$MODEL_W" --argjson dw "$DIR_W" \
-          --arg fill "$BAR_FILL" --arg empty "$BAR_EMPTY" --argjson cells "$BAR_CELLS" '
+          --arg fill "$BAR_FILL" --arg empty "$BAR_EMPTY" --argjson cells "$BAR_CELLS" \
+          --argjson lim "$SHOW_LIMITS" --argjson cache "$SHOW_CACHE" '
   # ---- padding / truncation helpers (codepoint-based) ----
   def spaces($n): if $n > 0 then " " * $n else "" end;
   def rpad($w): . + spaces($w - length);
@@ -72,15 +83,20 @@ out=$(jq -j --argjson mw "$MODEL_W" --argjson dw "$DIR_W" \
   def heat($p): if $p >= 80 then red elif $p >= 60 then yel else grn end;
 
   # ---- one rate-limit segment, always the same width ----
+  #      Drawn even when the payload omits the window: rate_limits comes and
+  #      goes (it rides on response headers), and a segment that disappears
+  #      drags everything after it left.
   #      The countdown is unconditional. Showing it only past some threshold
   #      means either reserving its columns (a hole while quiet) or letting
   #      everything after it jump when the threshold is crossed. Always-on
   #      costs a few columns and is the only option that does neither.
   def limit($label; $raw; $reset):
-    if $raw == null then ""
+    if $raw == null then
+      sep + dim + $label + " " + ("-" | lpad(4)) + " in " + ("-" | rpad(6)) + rst
     else ([[$raw, 0] | max, 100] | min | round) as $p
       | (($p | tostring) + "%" | lpad(4)) as $ptxt
-      | (if $reset == null then "" else " " + dim + "in " + (countdown($reset) | rpad(6)) + rst end) as $rtxt
+      | (if $reset == null then " " + dim + "in " + ("-" | rpad(6)) + rst
+         else " " + dim + "in " + (countdown($reset) | rpad(6)) + rst end) as $rtxt
       | sep + heat($p) + $label + " " + $ptxt + rst + $rtxt
     end;
 
@@ -103,13 +119,19 @@ out=$(jq -j --argjson mw "$MODEL_W" --argjson dw "$DIR_W" \
   + " " + (($pct | tostring) + "%" | lpad(4)) + rst
   + " " + dim + ($used | fmttok | lpad(6)) + "/" + ($win | fmttok | rpad(6)) + rst
   + sep + dim + (("$" + ($cost | fixed(2))) | lpad(8)) + rst
-  + limit("5h";    .rate_limits.five_hour.used_percentage;   .rate_limits.five_hour.resets_at)
-  + limit("7d";    .rate_limits.seven_day.used_percentage;   .rate_limits.seven_day.resets_at)
-  + limit("spend"; .rate_limits.spend_limit.used_percentage; .rate_limits.spend_limit.resets_at)
-  + (if (.prompt_cache.hit_ratio // null) == null then ""
-     else (.prompt_cache.hit_ratio * 100 | round) as $h
-       | (if .prompt_cache.warm then cyn else dim end) as $c
-       | sep + dim + "cache" + rst + " " + $c + (($h | tostring) + "%" | lpad(4)) + rst
+  + (if $lim == 0 then "" else
+       limit("5h"; .rate_limits.five_hour.used_percentage; .rate_limits.five_hour.resets_at)
+     + limit("7d"; .rate_limits.seven_day.used_percentage; .rate_limits.seven_day.resets_at)
+     + (if .rate_limits.spend_limit == null then ""
+        else limit("spend"; .rate_limits.spend_limit.used_percentage; .rate_limits.spend_limit.resets_at)
+        end)
+     end)
+  + (if $cache == 0 then "" else
+       sep + dim + "cache" + rst + " "
+     + (if (.prompt_cache.hit_ratio // null) == null then dim + ("-" | lpad(4)) + rst
+        else (.prompt_cache.hit_ratio * 100 | round) as $h
+          | (if .prompt_cache.warm then cyn else dim end) + (($h | tostring) + "%" | lpad(4)) + rst
+        end)
      end)
 ' 2>/dev/null) || out=""
 
