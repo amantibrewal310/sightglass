@@ -87,8 +87,8 @@ carries.
 | `▰▰▰▰▱▱▱▱▱▱  42%` | `context_window.used_percentage` | Green below 60%, amber to 79, red at 80+ |
 | `420.0k/1.00M` | `context_window.total_input_tokens` | Input plus cache-read and cache-write tokens |
 | `$88.40` | `cost.total_cost_usd` | Right-aligned on the decimal point |
-| `5h 61% in 59m` | `rate_limits.five_hour` | Countdown appears only past 60% |
-| `7d 30%` | `rate_limits.seven_day` | `spend` also appears on gateway accounts |
+| `5h 61% in 59m` | `rate_limits.five_hour` | Countdown is unconditional, so the segment never changes width |
+| `7d 30% in 1d14h` | `rate_limits.seven_day` | Same treatment. `spend` also appears on gateway accounts |
 | `cache 83%` | `prompt_cache.hit_ratio` | Cyan when warm, grey when cold; hidden until the first request |
 
 Every field is read defensively — a missing one hides its segment rather than breaking
@@ -101,15 +101,16 @@ Set these in the environment, or edit the defaults at the top of the script.
 
 | Variable | Default | |
 | --- | --- | --- |
-| `MODEL_W` | `14` | Columns reserved for the model name |
-| `DIR_W` | `24` | Columns reserved for the directory |
+| `MODEL_W` | `12` | Columns reserved for the model name |
+| `DIR_W` | `20` | Columns reserved for the directory |
 | `BAR_CELLS` | `10` | Bar length; `20` gives 5% resolution |
 | `BAR_FILL` | `▰` | Filled cell — keep it East-Asian-width Neutral |
 | `BAR_EMPTY` | `▱` | Empty cell |
 | `GAP_ABOVE` | `0` | Blank lines above the line |
 | `GAP_BELOW` | `1` | Blank lines below the line |
 
-The line is ~131 columns. `MODEL_W=12 DIR_W=18` brings it to ~123.
+The line is 129 columns and stays there: every field is fixed width, so nothing
+downstream moves when a number grows. `MODEL_W=10 DIR_W=14` brings it to ~119.
 
 `padding` in `settings.json` is horizontal only — it maps to `paddingX` in the renderer.
 For vertical breathing room use `GAP_BELOW`: the renderer splits the command output on
@@ -135,6 +136,12 @@ Ambiguous takes two under a CJK locale and one otherwise.
 | `█ ░` | U+2588 · U+2591 | Ambiguous | Two cells under a CJK locale — a ten-column shear. |
 | `━ ─` | U+2501 · U+2500 | Ambiguous | Same hazard. |
 | `⚡` | U+26A1 | Wide | Always two cells. This was the original bug. |
+
+**Nothing may be conditional.** A field that appears only sometimes forces a choice
+between reserving its columns — leaving a hole whenever it is absent — and letting every
+field after it jump when it shows up. Both are worse than just always drawing it, which
+is why the rate-limit reset countdown is unconditional rather than appearing at some
+threshold.
 
 **Watch the rounding at field boundaries.** Token counts are abbreviated to six
 characters. The switch to megatokens happens at 999,500 rather than 1,000,000, because

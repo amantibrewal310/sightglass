@@ -7,8 +7,8 @@
 # codepoints, which is what actually lines the columns up.
 #
 # Column widths - tune these two if the line is too wide for your terminal.
-MODEL_W=14
-DIR_W=24
+MODEL_W=12
+DIR_W=20
 
 # Bar glyphs. U+25B0/U+25B1 are East-Asian-width "Neutral", i.e. exactly one
 # cell in every terminal. Block elements (U+2588) and box drawing (U+2501) are
@@ -71,13 +71,16 @@ out=$(jq -j --argjson mw "$MODEL_W" --argjson dw "$DIR_W" \
   def sep: " " + dim + "·" + rst + " ";
   def heat($p): if $p >= 80 then red elif $p >= 60 then yel else grn end;
 
-  # ---- one rate-limit segment; the countdown is emitted only when it exists,
-  #      never reserved, so a quiet window leaves no gap ----
+  # ---- one rate-limit segment, always the same width ----
+  #      The countdown is unconditional. Showing it only past some threshold
+  #      means either reserving its columns (a hole while quiet) or letting
+  #      everything after it jump when the threshold is crossed. Always-on
+  #      costs a few columns and is the only option that does neither.
   def limit($label; $raw; $reset):
     if $raw == null then ""
     else ([[$raw, 0] | max, 100] | min | round) as $p
       | (($p | tostring) + "%" | lpad(4)) as $ptxt
-      | (if $p >= 60 and $reset != null then " " + dim + "in " + countdown($reset) + rst else "" end) as $rtxt
+      | (if $reset == null then "" else " " + dim + "in " + (countdown($reset) | rpad(6)) + rst end) as $rtxt
       | sep + heat($p) + $label + " " + $ptxt + rst + $rtxt
     end;
 
