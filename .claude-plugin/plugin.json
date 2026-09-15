@@ -1,0 +1,10 @@
+{
+  "name": "sightglass",
+  "version": "1.0.0",
+  "description": "Always-on Claude Code status line: context %, tokens, rate limits and prompt-cache hit rate, in columns that never shift.",
+  "author": { "name": "amantibrewal310" },
+  "homepage": "https://github.com/amantibrewal310/sightglass",
+  "repository": "https://github.com/amantibrewal310/sightglass",
+  "license": "CC0-1.0",
+  "keywords": ["statusline", "context", "tokens", "rate-limits", "prompt-cache"]
+}

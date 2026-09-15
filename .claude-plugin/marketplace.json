@@ -1,0 +1,15 @@
+{
+  "name": "sightglass",
+  "owner": { "name": "amantibrewal310" },
+  "metadata": {
+    "description": "An always-on status line for Claude Code.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "sightglass",
+      "source": "./",
+      "description": "Always-on status line: context %, tokens, rate limits and prompt-cache hit rate."
+    }
+  ]
+}
